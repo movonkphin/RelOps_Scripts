@@ -1,0 +1,97 @@
+import requests
+import json
+from datetime import datetime
+
+def get_all_component_statuses():
+	api_key = "API_KEY"   # Replace "YOUR_API_KEY" with your actual API key
+
+    # First, retrieve the list of pages associated with your account
+	pages_url = "https://api.statuspage.io/v1/pages.json"
+	headers = {"Authorization": f"OAuth {api_key}"}
+
+	try:
+		pages_response = requests.get(pages_url, headers=headers)
+		pages_response.raise_for_status()  # Raise an exception if the request was not successful
+	except requests.exceptions.RequestException as e:
+		print(f"Error making the pages request: {str(e)}")
+		return None
+
+	try:
+		pages_data = pages_response.json()
+
+		component_statuses = []
+
+		# Loop through each page to collect their components' statuses
+		for page in pages_data:
+			page_id = page["id"]
+			page_name = page["name"]
+
+			components_url = f"https://api.statuspage.io/v1/pages/{page_id}/components.json"
+			url = components_url
+
+			while url:
+				try:
+					components_response = requests.get(url, headers=headers)
+					components_response.raise_for_status()
+				except requests.exceptions.RequestException as e:
+					print(f"Error making the components request for page '{page_name}': {str(e)}")
+					break
+
+				try:
+					components_data = components_response.json()
+					url = components_response.links.get("next", {}).get("url")
+
+					# Retrieve the component groups for the current page
+					component_groups_url = f"https://api.statuspage.io/v1/pages/{page_id}/component-groups.json"
+					component_groups_response = requests.get(component_groups_url, headers=headers)
+					component_groups_response.raise_for_status()
+					component_groups_data = component_groups_response.json()
+
+					# Create a mapping of component group IDs to their names
+					component_group_names = {group["id"]: group["name"] for group in component_groups_data}
+
+					# Assuming data is a list, so we need to loop through the components to collect their statuses and names
+					for component in components_data:
+						component_name = component["name"]
+						status = component["status"]
+						component_group_id = component["group_id"]
+						component_group_name = component_group_names.get(component_group_id, "No Group")
+
+						component_statuses.append({"page": page_name, "group": component_group_name, "name": component_name, "status": status})
+
+				except (json.JSONDecodeError, KeyError) as e:
+					print(f"Error parsing JSON response for page '{page_name}': {str(e)}")
+					break
+
+		return component_statuses
+
+	except (json.JSONDecodeError, KeyError) as e:
+		print(f"Error parsing JSON response for pages: {str(e)}")
+		return None
+
+# Example usage
+all_component_statuses = get_all_component_statuses()
+
+if all_component_statuses is not None:
+    for component_status in all_component_statuses:
+        page_name = component_status["page"]
+        component_group_name = component_status["group"]
+        component_name = component_status["name"]
+        status = component_status["status"]
+        print(f"Page: {page_name}, Component Group: {component_group_name}, Component Name: {component_name}, Status: {status}")
+
+    # Write the output to a test file
+    output_filename = "component_statuses.txt"
+    with open(output_filename, "a") as file:
+        file.write(f"Timestamp: {datetime.now()}\n")
+        for component_status in all_component_statuses:
+            page_name = component_status["page"]
+            component_group_name = component_status["group"]
+            component_name = component_status["name"]
+            status = component_status["status"]
+            file.write(f"Page: {page_name}, Component Group: {component_group_name}, Component Name: {component_name}, Status: {status}\n")
+        file.write("\n")
+    print(f"Output written to '{output_filename}'.")
+
+else:
+    print("Failed to retrieve component statuses.")
