@@ -1,0 +1,55 @@
+import requests
+import json
+
+API_KEY="API_KEY" #OpsGenie APIKey goes here. 
+API_URL="https://api.opsgenie.com/v1/services"
+OUTPUT_FILE = 'services.txt'  # File to save the output
+
+headers = {
+    'Authorization': 'GenieKey ' + API_KEY,
+    'Content-Type': 'application/json'
+}
+
+# Function to retrieve services for a given page
+def get_services_for_page(page):
+    params = {
+        'limit': 100,
+        'offset': (page - 1) * 100
+    }
+
+    response = requests.get(API_URL, headers=headers, params=params)
+    data = response.json()
+
+    services = data.get('data', [])
+    formatted_services = ''
+
+    for service in services:
+        service_name = service.get('name', '')
+        service_id = service.get('id', '')
+        status = service.get('status', '')
+        description = service.get('description', '')
+        formatted_services += f'Service Name: {service_name}\n'
+      # formatted_services += f'  - ID: {service_id}\n'
+      # formatted_services += f'  - Status: {status}\n'
+      # formatted_services += f'  - Description: {description}\n\n'
+
+    return formatted_services
+
+# Main function to retrieve and save the list of services
+def list_services():
+    with open(OUTPUT_FILE, 'w') as file:
+        file.write('List of Services:\n')
+        page = 1
+        services = get_services_for_page(page)
+
+        while services:
+            file.write(f'Page {page}:\n')
+            file.write(services)
+
+            page += 1
+            services = get_services_for_page(page)
+
+    print(f'Services list saved to {OUTPUT_FILE}')
+
+# Execute the main function
+list_services()
