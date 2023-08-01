@@ -4,7 +4,8 @@ Just a bunch of scripts used for some RelOps things.\
 \
 query_opsgenie_services - This looks at and lists the services we currently have in OpsGenie, outputting the results to a text file.\
 \
-This requires the following external python modules: \ 
+This requires the following external python modules: 
+
 requests\
 json
 \
